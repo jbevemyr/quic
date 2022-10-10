@@ -201,6 +201,7 @@ _IRQL_requires_max_(DISPATCH_LEVEL)
   BOOLEAN is_destroy = FALSE;
   QUIC_STATUS status = QUIC_STATUS_SUCCESS;
 
+
   assert(Connection == c_ctx->Connection);
   if (!(Connection == c_ctx->Connection))
     {
@@ -414,6 +415,9 @@ ServerConnectionCallback(HQUIC Connection,
     case QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED:
       status = handle_connection_event_peer_certificate_received(c_ctx, Event);
       break;
+    case QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED:
+      /* @TODO validate SNI */
+      break;
     default:
       break;
     }
@@ -513,10 +517,9 @@ async_connect3(ErlNifEnv *env,
     }
 
   // convert eoptions to Configuration
-  bool HasCaCertfile = trusted != NULL;
-  ERL_NIF_TERM estatus = ClientLoadConfiguration(
-      env, &eoptions, &(c_ctx->config_resource->Configuration),
-      HasCaCertfile);
+  ERL_NIF_TERM estatus =
+    ClientLoadConfiguration(env, &eoptions,
+                            &(c_ctx->config_resource->Configuration));
 
   if (!IS_SAME_TERM(ATOM_OK, estatus))
     {
@@ -1400,22 +1403,7 @@ handle_connection_event_peer_certificate_received(
   // @TODO peer_certificate_received
   // Only with QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED set
   assert(QUIC_CONNECTION_EVENT_PEER_CERTIFICATE_RECEIVED == Event->Type);
-  // Validate against CA certificates using OpenSSL API:s
-  X509 *cert =
-      (X509*) Event->PEER_CERTIFICATE_RECEIVED.Certificate;
-  X509_STORE_CTX *x509_ctx =
-      (X509_STORE_CTX*) Event->PEER_CERTIFICATE_RECEIVED.Chain;
-  STACK_OF(X509) *untrusted = X509_STORE_CTX_get0_untrusted(x509_ctx);
-
-  X509_STORE_CTX *ctx = X509_STORE_CTX_new();
-  X509_STORE_CTX_init(ctx, c_ctx->trusted, cert, untrusted);
-  int res = X509_verify_cert(ctx);
-  X509_STORE_CTX_free(ctx);
-
-  if (res <= 0)
-      return  QUIC_STATUS_BAD_CERTIFICATE;
-  else
-      return  QUIC_STATUS_SUCCESS;
+  return  QUIC_STATUS_SUCCESS;
 
   /* @TODO validate SNI */
 }

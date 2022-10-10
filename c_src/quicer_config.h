@@ -21,6 +21,7 @@ limitations under the License.
 #include "quicer_nif.h"
 #include <msquichelper.h>
 
+
 #ifdef DEBUG
 #define dbg(fmt, ...) \
     do { if (DEBUG) fprintf(stderr, "%s:%d:%s(): " fmt "\r\n", __FILE__,  \
@@ -44,8 +45,7 @@ ERL_NIF_TERM ServerLoadConfiguration(ErlNifEnv *env,
                                      QUIC_CREDENTIAL_CONFIG *Config);
 ERL_NIF_TERM ClientLoadConfiguration(ErlNifEnv *env,
                                      const ERL_NIF_TERM *option,
-                                     HQUIC *Configuration,
-                                     bool HasCaCertFile);
+                                     HQUIC *Configuration);
 
 bool load_alpn(ErlNifEnv *env,
                const ERL_NIF_TERM *option,

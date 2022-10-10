@@ -299,6 +299,7 @@ listen2(ErlNifEnv *env, __unused_parm__ int argc, const ERL_NIF_TERM argv[])
   char password[256] = { 0 };
   char cert_path[PATH_MAX + 1] = { 0 };
   char key_path[PATH_MAX + 1] = { 0 };
+  char cacert_path[PATH_MAX + 1] = { 0 };
   ERL_NIF_TERM tmp_term;
 
   if (get_str_from_map(env, ATOM_CERT, &options, cert_path, PATH_MAX + 1) <= 0)
@@ -340,26 +341,11 @@ listen2(ErlNifEnv *env, __unused_parm__ int argc, const ERL_NIF_TERM argv[])
       CredConfig.Type = QUIC_CREDENTIAL_TYPE_CERTIFICATE_FILE;
     }
 
-  ERL_NIF_TERM ecacertfile;
-  if (enif_get_map_value(env, options, ATOM_CACERTFILE, &ecacertfile))
+  if (get_str_from_map(env, ATOM_CACERTFILE, &options, cacert_path,
+                       PATH_MAX + 1))
     {
-      unsigned len;
-      if (enif_get_list_length(env, ecacertfile, &len))
-        {
-          l_ctx->cacertfile =
-            (char *) CXPLAT_ALLOC_NONPAGED(len+1, QUICER_CACERTFILE);
-          if (!enif_get_string(env, ecacertfile, l_ctx->cacertfile,
-                               len+1, ERL_NIF_LATIN1))
-            {
-              CXPLAT_FREE(l_ctx->cacertfile, QUICER_CACERTFILE);
-              l_ctx->cacertfile = NULL;
-              return ERROR_TUPLE_2(ATOM_BADARG);
-            }
-        }
-      else
-        {
-          return ERROR_TUPLE_2(ATOM_BADARG);
-        }
+      CredConfig.Flags |= QUIC_CREDENTIAL_FLAG_SET_CA_CERTIFICATE_FILE;
+      CredConfig.CaCertificateFile = cacert_path;
     }
 
   bool Verify = load_verify(env, &options, false);
@@ -367,18 +353,7 @@ listen2(ErlNifEnv *env, __unused_parm__ int argc, const ERL_NIF_TERM argv[])
   if (!Verify)
       CredConfig.Flags |= QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
   else
-    {
       CredConfig.Flags |= QUIC_CREDENTIAL_FLAG_REQUIRE_CLIENT_AUTHENTICATION;
-      if (l_ctx->cacertfile)
-        {
-          // We do our own certificate verification agains the certificates
-          // in cacertfile
-          CredConfig.Flags |=
-            QUIC_CREDENTIAL_FLAG_INDICATE_CERTIFICATE_RECEIVED;
-          CredConfig.Flags |=
-            QUIC_CREDENTIAL_FLAG_NO_CERTIFICATE_VALIDATION;
-        }
-    }
 
   ERL_NIF_TERM estatus = ServerLoadConfiguration(
       env, &options, &l_ctx->config_resource->Configuration, &CredConfig);

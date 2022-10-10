@@ -457,6 +457,7 @@ ERL_NIF_TERM ATOM_UNDEFINED;
   ATOM(ATOM_QUIC_STATUS_CERT_NO_CERT, cert_no_cert);                          \
   ATOM(ATOM_QUIC_STATUS_CERT_REQUIRED, cert_required);                        \
   ATOM(ATOM_QUIC_STATUS_CERT_UNOBTAINABLE, cert_unobtainable);                \
+
   /*-------------------------------------------------------*/                 \
   /*         msquic  execution profile for reg             */                 \
   /*-------------------------------------------------------*/                 \

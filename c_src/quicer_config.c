@@ -192,13 +192,15 @@ ServerLoadConfiguration(ErlNifEnv *env,
 ERL_NIF_TERM
 ClientLoadConfiguration(ErlNifEnv *env,
                         const ERL_NIF_TERM *options, // map
-                        HQUIC *Configuration,
-                        bool HasCaCertFile)
+                        HQUIC *Configuration)
 {
   QUIC_SETTINGS Settings = { 0 };
   char cert_path[PATH_MAX + 1] = { 0 };
   char key_path[PATH_MAX + 1] = { 0 };
+  char cacert_path[PATH_MAX + 1] = { 0 };
   char password[256] = { 0 };
+  ERL_NIF_TERM tmp_term;
+
   ERL_NIF_TERM ret = ATOM_OK;
   //
   // Configures the client's idle timeout.
@@ -254,7 +256,13 @@ ClientLoadConfiguration(ErlNifEnv *env,
         }
     }
 
-  // Should we try to verify the certificate the server sends?
+  if (get_str_from_map(env, ATOM_CACERTFILE, options, cacert_path,
+                       PATH_MAX + 1))
+    {
+      CredConfig.Flags |= QUIC_CREDENTIAL_FLAG_SET_CA_CERTIFICATE_FILE;
+      CredConfig.CaCertificateFile = cacert_path;
+    }
+
   bool Verify = load_verify(env, options, true);
 
   if (!Verify)
@@ -376,6 +384,7 @@ load_verify(ErlNifEnv *env,
             bool default_verify)
 {
   ERL_NIF_TERM verify_atom;
+
   if (!enif_get_map_value(env, *options, ATOM_VERIFY, &verify_atom))
     return default_verify;
 

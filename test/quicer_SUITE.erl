@@ -630,9 +630,7 @@ run_tc_conn_custom_ca_other(Config)->
                    end),
   receive
     listener_ready ->
-      {error,transport_down,
-       #{error := _ErrorCode,
-         status := bad_certificate}} =
+      {error,transport_down, cert_untrusted_root} =
         quicer:connect("localhost", Port,
                        default_conn_opts_verify(Config, "other-ca"),
                        5000),
@@ -698,25 +696,14 @@ run_tc_conn_client_bad_cert(Config)->
       {ok, 4} = quicer:send(Stm, <<"ping">>),
       receive
         {quic, transport_shutdown, _Ref,
-         #{error := _ErrorCode, status := bad_certificate}} ->
-          _ = flush([])
-      after
-        2000 ->
-          Other = flush([]),
+         cert_untrusted_root} ->
+          ok;
+        Other ->
           ct:fail("Unexpected Msg ~p", [Other])
       end,
       ensure_server_exit_normal(Ref)
   after 1000 ->
       ct:fail("timeout")
-  end.
-
-flush(Acc) ->
-  receive
-    Other ->
-      flush([Other|Acc])
-  after
-    0 ->
-      lists:reverse(Acc)
   end.
 
 tc_stream_client_init(Config) ->
@@ -2503,6 +2490,12 @@ default_listen_opts_client_cert(Config) ->
   , {verify, peer} |
     tl(default_listen_opts(Config)) ].
 
+default_listen_opts_client_cert(Config) ->
+  DataDir = ?config(data_dir, Config),
+  [ {cacertfile, filename:join(DataDir, "ca.pem")}
+  , {verify, peer} |
+    tl(default_listen_opts(Config)) ].
+
 active_recv(Stream, Len) ->
   active_recv(Stream, Len, []).
 active_recv(Stream, Len, BinList) ->
@@ -2624,7 +2617,6 @@ create_file(Filename, Fmt, Args) ->
     file:close(F)
   end,
   ok.
-
 
 %%%_* Emacs ====================================================================
 %%% Local Variables:
