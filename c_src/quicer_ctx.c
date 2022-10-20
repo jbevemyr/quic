@@ -88,7 +88,8 @@ deinit_c_ctx(QuicerConnCTX *c_ctx)
   enif_free_env(c_ctx->env);
   if (c_ctx->trusted != NULL)
     {
-      X509_STORE_free(c_ctx->trusted);
+      if (c_ctx->trusted_owner)
+          X509_STORE_free(c_ctx->trusted);
       c_ctx->trusted = NULL;
     }
   if (c_ctx->config_resource)
@@ -106,7 +107,8 @@ destroy_c_ctx(QuicerConnCTX *c_ctx)
   // we should demon the owner now!
   if (c_ctx->trusted != NULL)
     {
-      X509_STORE_free(c_ctx->trusted);
+      if (c_ctx->trusted_owner)
+        X509_STORE_free(c_ctx->trusted);
       c_ctx->trusted = NULL;
     }
   enif_demonitor_process(c_ctx->env, c_ctx, &c_ctx->owner_mon);

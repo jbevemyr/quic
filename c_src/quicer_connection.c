@@ -506,6 +506,7 @@ async_connect3(ErlNifEnv *env,
                 }
             }
           c_ctx->trusted = trusted;
+          c_ctx->trusted_owner = TRUE;
         }
 
       if (trusted == NULL) {

@@ -46,6 +46,8 @@ typedef struct QuicerListenerCTX
   ErlNifEnv *env;
   ErlNifMutex *lock;
   char *cacertfile;
+  time_t cacertfile_mtime;
+  X509_STORE *trusted;
   // Listener handle closed flag
   // false means the handle is invalid
   BOOLEAN is_closed;
@@ -69,6 +71,7 @@ typedef struct QuicerConnCTX
   ErlNifEnv *env;
   ErlNifMutex *lock;
   X509_STORE *trusted;
+  BOOLEAN trusted_owner;
   // Connection handle closed flag
   // false means the handle is invalid
   QUIC_TLS_SECRETS *TlsSecrets;

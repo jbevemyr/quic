@@ -730,10 +730,17 @@ resource_listener_dealloc_callback(__unused_parm__ ErlNifEnv *env, void *obj)
       MsQuic->ListenerClose(l_ctx->Listener);
     }
 
-  if (l_ctx->cacertfile) {
+  if (l_ctx->cacertfile)
+    {
       CXPLAT_FREE(l_ctx->cacertfile, QUICER_CACERTFILE);
       l_ctx->cacertfile = NULL;
-  }
+    }
+
+  if (l_ctx->trusted)
+    {
+      X509_STORE_free(l_ctx->trusted);
+      l_ctx->trusted = NULL;
+    }
 
   deinit_l_ctx(l_ctx);
   // @TODO notify acceptors that the listener is closed

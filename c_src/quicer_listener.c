@@ -20,7 +20,67 @@ limitations under the License.
 #include <netinet/in.h>
 #include <openssl/x509.h>
 #include <openssl/pem.h>
+#include <sys/stat.h>
 
+void
+load_cacertfile(QuicerListenerCTX *l_ctx)
+{
+  X509_STORE *trusted = NULL;
+  X509_LOOKUP *lookup = NULL;
+
+  // Save last modified timestamp in order to detect changes.
+  // Stat must be read before loading file to avoid creating
+  // time window for changes to slip through.
+  struct stat attr;
+  if (stat(l_ctx->cacertfile, &attr) < 0)
+    {
+      fprintf(stderr, "Error: failed to stat cacertfile: %s\r\n",
+              l_ctx->cacertfile);
+      return;
+    }
+
+  // possibly release old store
+  if (l_ctx->trusted)
+    {
+      if (l_ctx->cacertfile_mtime < attr.st_mtime)
+        {
+          X509_STORE_free(l_ctx->trusted);
+          l_ctx->trusted = NULL;
+        }
+      else
+        {
+          return;
+        }
+    }
+
+  // (re-)load cacertfile
+  trusted = X509_STORE_new();
+
+  if (trusted != NULL)
+    {
+      lookup = X509_STORE_add_lookup(trusted, X509_LOOKUP_file());
+      if (lookup != NULL)
+        {
+          if (!X509_LOOKUP_load_file(lookup,
+                                     l_ctx->cacertfile,
+                                     X509_FILETYPE_PEM))
+            {
+              X509_STORE_free(trusted);
+              trusted = NULL;
+            }
+        }
+      else
+        {
+          X509_STORE_free(trusted);
+          trusted = NULL;
+        }
+    }
+
+  l_ctx->trusted = trusted;
+  l_ctx->cacertfile_mtime = attr.st_mtime;
+
+  return;
+}
 
 QUIC_STATUS
 ServerListenerCallback(__unused_parm__ HQUIC Listener,
@@ -56,30 +116,13 @@ ServerListenerCallback(__unused_parm__ HQUIC Listener,
        */
       if (l_ctx->cacertfile)
         {
-          X509_STORE *trusted = NULL;
-          X509_LOOKUP *lookup = NULL;
-          trusted = X509_STORE_new();
+          load_cacertfile(l_ctx);
+        }
 
-          if (trusted != NULL)
-            {
-              lookup = X509_STORE_add_lookup(trusted, X509_LOOKUP_file());
-              if (lookup != NULL)
-                {
-                  if (!X509_LOOKUP_load_file(lookup,
-                                             l_ctx->cacertfile,
-                                             X509_FILETYPE_PEM))
-                    {
-                      X509_STORE_free(trusted);
-                      trusted = NULL;
-                    }
-                }
-              else
-                {
-                  X509_STORE_free(trusted);
-                  trusted = NULL;
-                }
-            }
-          c_ctx->trusted = trusted;
+      if (l_ctx->trusted)
+        {
+          c_ctx->trusted = l_ctx->trusted;
+          c_ctx->trusted_owner = FALSE;
         }
 
       assert(l_ctx->config_resource);
@@ -360,6 +403,11 @@ listen2(ErlNifEnv *env, __unused_parm__ int argc, const ERL_NIF_TERM argv[])
         {
           return ERROR_TUPLE_2(ATOM_BADARG);
         }
+    }
+
+  if (l_ctx->cacertfile)
+    {
+      load_cacertfile(l_ctx);
     }
 
   bool Verify = load_verify(env, &options, false);
