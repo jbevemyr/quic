@@ -1313,12 +1313,8 @@ stream_deliver_recv_chain(ErlNifEnv *env, QuicerStreamCTX *s_ctx)
   ERL_NIF_TERM props_value[] = { enif_make_uint64(menv, abs_offset),
                                  enif_make_uint64(menv, len),
                                  enif_make_int(menv, (int)flags) };
-  ERL_NIF_TERM report = make_event_with_props(menv,
-                                              enif_make_binary(menv, &bin),
-                                              eHandle,
-                                              props_name,
-                                              props_value,
-                                              3);
+  ERL_NIF_TERM report = make_event_with_props(
+      menv, enif_make_binary(menv, &bin), eHandle, props_name, props_value, 3);
   enif_send(env, &(s_ctx->owner->Pid), menv, report);
   enif_free_env(menv);
 
